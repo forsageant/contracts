@@ -1,0 +1,94 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Home
+    network: mainnet
+    source:
+      abi: Home
+      address: "0x988950c98e26874dC06530bB659C44dFDaD645a6"
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - Deposited
+        - TakedReward
+        - RewardIncreased
+      abis:
+        - name: Home
+          file: ./abis/Home.json
+      eventHandlers:
+        - event: Deposited(indexed address,uint256,uint256)
+          handler: handleDeposited
+        - event: RewardIncreased(indexed address,indexed address,indexed
+            uint8,uint256,uint256)
+          handler: handleRewardIncreased
+        - event: TakedReward(indexed address,uint256,uint256)
+          handler: handleTakedReward
+      file: ./src/home.ts
+  - kind: ethereum
+    name: Mine
+    network: mainnet
+    source:
+      abi: Mine
+      address: "0xd0EF020D21B68f3aeb66A705522ccf19210dC220"
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - TakedRewardMine
+      abis:
+        - name: Mine
+          file: ./abis/Mine.json
+      eventHandlers:
+        - event: TakedReward(indexed address,uint256,uint256)
+          handler: handleTakedReward
+      file: ./src/mine.ts
+  - kind: ethereum
+    name: Nodes
+    network: mainnet
+    source:
+      abi: Nodes
+      address: "0x2BD8837f099D6f5379C0a3BF3be755525a2DC6cc"
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - Noder
+        - TakedRewardNoder
+      abis:
+        - name: Nodes
+          file: ./abis/Nodes.json
+      eventHandlers:
+        - event: TakedReward(indexed address,uint256,uint256)
+          handler: handleTakedReward
+        - event: NoderPowerChanged(indexed address,uint256)
+          handler: handleNoderPowerChanged
+      file: ./src/nodes.ts
+  - kind: ethereum
+    name: PoolFomo
+    network: mainnet
+    source:
+      abi: PoolFomo
+      address: "0x4627D0C910D2c7Fe92e652c49Fc938cFF4A485F2"
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - FomoDistrubtioned
+      abis:
+        - name: PoolFomo
+          file: ./abis/PoolFomo.json
+      eventHandlers:
+        - event: Distrubtioned(uint256,uint256,uint256)
+          handler: handleDistrubtioned
+      file: ./src/fomo.ts

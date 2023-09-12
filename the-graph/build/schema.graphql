@@ -1,0 +1,57 @@
+type Noder @entity {
+  id:ID!
+  account:Bytes!
+  power:BigInt!
+}
+
+type TakedRewardNoder @entity {
+  id:ID!
+  account:Bytes!
+  amount:BigInt!
+  time:Int!
+}
+
+type TakedRewardMine @entity {
+  id:ID!
+  account:Bytes!
+  amount:BigInt!
+  time:Int!
+}
+
+type FomoDistrubtioned @entity {
+  id:ID!
+  time:Int!
+  beforTotalAmount:BigInt!
+  afterTotalAmount:BigInt!
+  distrubtionTxHash:Bytes!
+}
+
+type Deposited @entity {
+  id:ID!
+  account:Bytes!
+  amount:BigInt!
+  time:Int!
+}
+
+type TakedReward @entity {
+  id:ID!
+  account:Bytes!
+  amount:BigInt!
+  time:Int!
+}
+
+enum RewardType {
+    Static,
+    Parent,
+    Levels,
+    Layers
+}
+
+type RewardIncreased @entity {
+  id:ID!
+  owner:Bytes!
+  sender:Bytes!
+  rewardType: RewardType!
+  amount: BigInt!
+  time:Int!
+}
