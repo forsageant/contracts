@@ -22,7 +22,7 @@ contract FOLToken is ERC20, Ownable {
     event Blocked(address indexed user, uint256 indexed time, bool addOrRemove);
     event Guarded(address indexed user, uint256 indexed time, bool addOrRemove);
 
-    constructor(address _account) ERC20("FOL Token", "FOL") {
+    constructor(address _account) ERC20("AD", "AD") {
         _mint(_account, 2100 * 10000 * 1e18);
 
         sellFee = 0.01e12;

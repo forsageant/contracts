@@ -15,8 +15,8 @@ import {IPancakeFactory} from "./interface/IPancakeFactory.sol";
 import {IAssetPool} from "./interface/IAssetPool.sol";
 import {ILevels} from "./interface/ILevels.sol";
 
-uint256 constant CREATE_LIQUIDITY_DURATION_LIMIT = 30 days;
-uint256 constant CREATE_LIQUIDITY_CURRENCY_TOKEN_AMOUNT = 100 ether;
+uint256 constant CREATE_LIQUIDITY_DURATION_LIMIT = 10 days;
+uint256 constant CREATE_LIQUIDITY_CURRENCY_TOKEN_AMOUNT = 210000 ether;
 uint256 constant CREATE_LIQUIDITY_REWARD_TOKEN_AMOUNT = 21000000 ether;
 
 contract Mine is PermissionControl, TranferEthWithCard {
@@ -79,9 +79,20 @@ contract Mine is PermissionControl, TranferEthWithCard {
         MinerInfo storage info = minerInfoOf[account];
 
         // settlement current reward
-        info.reward = earned(account);
+        uint256 reward = earned(account);
         info.rewardDebt = accountPerShare;
+        if (reward > 0) {
+            uint8 decimals = IERC20MetadataUpgradeable(address(rewardToken))
+                .decimals();
+            uint256 rewardTokenPrice = _rewardTokenPerCurrency(10 ** decimals);
+            uint256 rewardQuotaDiff = (info.power * (10 ** decimals)) /
+                rewardTokenPrice;
 
+            if (reward > rewardQuotaDiff) {
+                reward = rewardQuotaDiff;
+            }
+        }
+        info.reward = reward;
         // update powers
         totalPower -= info.power;
         info.power = 0;
@@ -225,21 +236,23 @@ contract Mine is PermissionControl, TranferEthWithCard {
         MinerInfo storage info = minerInfoOf[cardAddr];
 
         reward = earned(cardAddr);
+        if (info.power > 0) {
+            uint8 decimals = IERC20MetadataUpgradeable(address(rewardToken))
+                .decimals();
+            uint256 rewardTokenPrice = _rewardTokenPerCurrency(10 ** decimals);
+            uint256 rewardQuotaDiff = (info.power * (10 ** decimals)) /
+                rewardTokenPrice;
 
-        uint8 decimals = IERC20MetadataUpgradeable(address(rewardToken))
-            .decimals();
-        uint256 rewardTokenPrice = _rewardTokenPerCurrency(10 ** decimals);
-        uint256 rewardQuotaDiff = (info.power * (10 ** decimals)) /
-            rewardTokenPrice;
-        if (reward > rewardQuotaDiff) {
-            reward = rewardQuotaDiff;
-            totalPower -= info.power;
-            info.power = 0;
-        } else {
-            uint256 rewardPerPower = (reward * rewardTokenPrice) /
-                (10 ** decimals);
-            totalPower -= rewardPerPower;
-            info.power -= rewardPerPower;
+            if (reward > rewardQuotaDiff) {
+                reward = rewardQuotaDiff;
+                totalPower -= info.power;
+                info.power = 0;
+            } else {
+                uint256 rewardPerPower = (reward * rewardTokenPrice) /
+                    (10 ** decimals);
+                totalPower -= rewardPerPower;
+                info.power -= rewardPerPower;
+            }
         }
 
         if (reward > 0) {
@@ -247,7 +260,7 @@ contract Mine is PermissionControl, TranferEthWithCard {
             info.rewardDebt = accountPerShare;
             info.taked += reward;
             rewardToken.safeTransfer(msg.sender, reward);
-            emit TakedReward(msg.sender, reward, block.timestamp);
+            emit TakedReward(cardAddr, reward, block.timestamp);
         }
     }
 }

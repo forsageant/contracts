@@ -40,7 +40,7 @@ contract Home is
     mapping(address => UserInfo) public userInfoOf;
 
     // @notice quota multiplier per level
-    mapping(uint8 => uint256) public quotaMultiplierPerOfLevel;
+    mapping(uint8 => uint256) public quotaMultiplierPerOfStart;
 
     // @notice withdraw reward fee ratio ever level
     mapping(uint8 => uint40) public withdrawFeeRatioOfLevel;
@@ -56,6 +56,7 @@ contract Home is
     address public withdrawFeeReceiptor;
 
     uint256 public unownedAssetTokenId;
+    uint256 public unownedAssetAmount;
 
     event Deposited(address indexed owner, uint256 amount, uint256 time);
 
@@ -84,13 +85,13 @@ contract Home is
         __ReentrancyGuard_init();
         __TranferEthOfCard_init(card_);
 
-        quotaMultiplierPerOfLevel[0] = 3.0e12;
-        quotaMultiplierPerOfLevel[1] = 3.0e12;
-        quotaMultiplierPerOfLevel[2] = 3.0e12;
-        quotaMultiplierPerOfLevel[3] = 3.0e12;
-        quotaMultiplierPerOfLevel[4] = 3.0e12;
-        quotaMultiplierPerOfLevel[5] = 3.0e12;
-        quotaMultiplierPerOfLevel[6] = 9.0e12;
+        quotaMultiplierPerOfStart[0] = 3.0e12;
+        quotaMultiplierPerOfStart[1] = 3.0e12;
+        quotaMultiplierPerOfStart[2] = 3.0e12;
+        quotaMultiplierPerOfStart[3] = 3.0e12;
+        quotaMultiplierPerOfStart[4] = 3.0e12;
+        quotaMultiplierPerOfStart[5] = 3.0e12;
+        quotaMultiplierPerOfStart[6] = 9.0e12;
 
         withdrawFeeRatioOfLevel[0] = 0.04e12;
         withdrawFeeRatioOfLevel[1] = 0.05e12;
@@ -161,15 +162,15 @@ contract Home is
         address cardAddr
     ) public view returns (uint8, uint256, uint256) {
         uint8 originStart = levels.startOf(cardAddr);
-        uint256 minValue = (1 ether * 2 ** originStart) / 10;
+        uint256 minValue = 100 ether * 2 ** originStart;
         uint256 maxValue;
         if (originStart + 1 >= 5) {
             maxValue = type(uint256).max;
         } else {
-            maxValue = 1 ether;
+            maxValue = 1000 ether;
         }
         if (originStart + 1 > 6) {
-            minValue = 1 ether;
+            minValue = 1000 ether;
         }
         return (originStart, minValue, maxValue);
     }
@@ -211,16 +212,15 @@ contract Home is
         UserInfo storage info = userInfoOf[cardAddr];
         info.totalDeposited += amount;
         info.rewardQuota +=
-            (amount * quotaMultiplierPerOfLevel[levels.levelOf(cardAddr)]) /
+            (amount *
+                quotaMultiplierPerOfStart[
+                    currentStart > 6 ? 6 : currentStart
+                ]) /
             1e12;
 
         // undistributed rewards
         uint256 diffAmount = amount;
-
-        if (currentStart > 6) {
-            // >6 all in mine
-            depositToken.safeTransfer(address(mine), diffAmount);
-        } else {
+        if (currentStart <= 6) {
             // 30% mine pool amount
             {
                 uint256 minePoolAmount = (amount * MINE_POOL_DISTRIBUTE_PROPS) /
@@ -248,79 +248,87 @@ contract Home is
                     break;
                 }
             }
-
-            // 24% levels + 10% layers
+        } else {
+            // >6 all in mine
             {
-                AchievementRewardInfo[] memory achievementRewardInfos = levels
-                    .distrubutionsForefathers(cardAddr, amount, 50);
-
-                for (uint256 i = 0; i < achievementRewardInfos.length; i++) {
-                    AchievementRewardInfo
-                        memory achievementRewardInfo = achievementRewardInfos[
-                            i
-                        ];
-
-                    if (
-                        achievementRewardInfo.account != address(0) &&
-                        achievementRewardInfo.amount > 0
-                    ) {
-                        diffAmount -= userInfoOf.increasePendingReward(
-                            achievementRewardInfo.account,
-                            achievementRewardInfo.rewardType ==
-                                AchievementRewardType.Level
-                                ? RewardType.Levels
-                                : RewardType.Layers,
-                            achievementRewardInfo.amount,
-                            _rewardIncreasedHandle
-                        );
-                    }
-                }
+                uint256 minePoolAmount = (amount *
+                    (MINE_POOL_DISTRIBUTE_PROPS +
+                        SHARE_PARENT_DISTRIBUTE_PROPS)) / 1e12;
+                diffAmount -= minePoolAmount;
+                depositToken.safeTransfer(address(mine), minePoolAmount);
             }
+        }
 
-            // when deposit count >= 3 clear mine pool powers
-            if (currentStart == 1) {
-                mine.addPowerDelegate(cardAddr, (amount * 1.5e12) / 1e12);
-            } else if (currentStart == 3) {
-                mine.clearPowerDelegate(cardAddr);
-            }
+        // 24% levels + 10% layers
+        {
+            AchievementRewardInfo[] memory achievementRewardInfos = levels
+                .distrubutionsForefathers(cardAddr, amount, 50);
 
-            // transfer to fomo pool
-            {
-                uint256 fomoAmount = (amount * FOMO_DISTRIBUTE_RADIO) / 1e12;
-                if (fomoAmount > 0) {
-                    diffAmount -= fomoAmount;
-                    depositToken.safeTransfer(address(fomoPool), fomoAmount);
-                    fomoPool.depositedDelegate(cardAddr, amount, fomoAmount);
-                }
-            }
+            for (uint256 i = 0; i < achievementRewardInfos.length; i++) {
+                AchievementRewardInfo
+                    memory achievementRewardInfo = achievementRewardInfos[i];
 
-            // transfer to week pool
-            {
-                uint256 weekAmount = (amount * WEEK_DISTRIBUTE_RADIO) / 1e12;
-                if (weekAmount > 0) {
-                    diffAmount -= weekAmount;
-                    depositToken.safeTransfer(address(weekPool), weekAmount);
-                    weekPool.depositedDelegate(
-                        family.parentOf(cardAddr),
-                        amount,
-                        weekAmount
+                if (
+                    achievementRewardInfo.account != address(0) &&
+                    achievementRewardInfo.amount > 0
+                ) {
+                    diffAmount -= userInfoOf.increasePendingReward(
+                        achievementRewardInfo.account,
+                        achievementRewardInfo.rewardType ==
+                            AchievementRewardType.Level
+                            ? RewardType.Levels
+                            : RewardType.Layers,
+                        achievementRewardInfo.amount,
+                        _rewardIncreasedHandle
                     );
                 }
             }
+        }
 
-            // trasnfer to dev
-            // {
-            //     uint256 devAmount = (amount * WEEK_DISTRIBUTE_RADIO) / 1e12;
-            //     if (devAmount > 0) {
-            //         diffAmount -= devAmount;
-            //         depositToken.safeTransfer(devReceiptor, devAmount);
-            //     }
-            // }
+        // when deposit count >= 3 clear mine pool powers
+        if (currentStart == 1) {
+            mine.addPowerDelegate(cardAddr, (amount * 1.5e12) / 1e12);
+        } else if (currentStart == 3) {
+            mine.clearPowerDelegate(cardAddr);
+        }
 
-            // diffamount to unownedAssetReceiptor
-            // if (diffAmount > 0) {
-            //     depositToken.safeTransfer(unownedAssetReceiptor, diffAmount);
-            // }
+        // transfer to fomo pool
+        {
+            uint256 fomoAmount = (amount * FOMO_DISTRIBUTE_RADIO) / 1e12;
+            if (fomoAmount > 0) {
+                diffAmount -= fomoAmount;
+                depositToken.safeTransfer(address(fomoPool), fomoAmount);
+                fomoPool.depositedDelegate(cardAddr, amount, fomoAmount);
+            }
+        }
+
+        // transfer to week pool
+        {
+            uint256 weekAmount = (amount * WEEK_DISTRIBUTE_RADIO) / 1e12;
+            if (weekAmount > 0) {
+                diffAmount -= weekAmount;
+                depositToken.safeTransfer(address(weekPool), weekAmount);
+                weekPool.depositedDelegate(
+                    family.parentOf(cardAddr),
+                    amount,
+                    weekAmount
+                );
+            }
+        }
+
+        // trasnfer to dev
+        // {
+        //     uint256 devAmount = (amount * WEEK_DISTRIBUTE_RADIO) / 1e12;
+        //     if (devAmount > 0) {
+        //         diffAmount -= devAmount;
+        //         depositToken.safeTransfer(devReceiptor, devAmount);
+        //     }
+        // }
+
+        // diffamount to unownedAssetReceiptor
+        if (diffAmount > 0) {
+            unownedAssetAmount += diffAmount;
+            //depositToken.safeTransfer(unownedAssetReceiptor, diffAmount);
         }
 
         emit Deposited(cardAddr, amount, block.timestamp);
@@ -357,18 +365,19 @@ contract Home is
         payable(msg.sender).transfer(reward - rewardFee);
         payable(withdrawFeeReceiptor).transfer(rewardFee);
 
-        emit TakedReward(msg.sender, reward, block.timestamp);
+        emit TakedReward(cardAddr, reward, block.timestamp);
     }
 
     function takeUnownedAssetBalance() external {
+        require(unownedAssetAmount > 0, "zero");
         require(
             ICard(card).ownerOf(unownedAssetTokenId) == msg.sender,
             "invalid msg"
         );
-        depositToken.safeTransfer(
-            msg.sender,
-            depositToken.balanceOf(address(this))
-        );
+        IWrappedCoin(address(depositToken)).withdraw(unownedAssetAmount);
+
+        payable(msg.sender).transfer(unownedAssetAmount);
+        unownedAssetAmount = 0;
     }
 
     receive() external payable {}

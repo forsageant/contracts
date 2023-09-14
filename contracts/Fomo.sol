@@ -76,7 +76,7 @@ contract PoolFomo is
 
     receive() external payable {}
 
-    function distrubtionPool() external nonReentrant onlyRole(MANAGER_ROLE) {
+    function distrubtionPool() external nonReentrant {
         require(block.timestamp > distrubutedTime, "not yet");
         uint256 historyLen = investHistoryAt.length;
         require(historyLen > 0, "empty invest history");

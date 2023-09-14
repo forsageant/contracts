@@ -58,7 +58,7 @@ contract Nodes is PermissionControl, INodes, TranferEthWithCard {
             rewardToken.safeTransfer(msg.sender, reward);
         }
 
-        emit TakedReward(msg.sender, reward, block.timestamp);
+        emit TakedReward(cardAddr, reward, block.timestamp);
     }
 
     function setNoderPowerDelegate(
