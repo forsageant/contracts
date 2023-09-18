@@ -12,7 +12,7 @@ import {ILevels} from "./interface/ILevels.sol";
 import {INodes} from "./interface/INodes.sol";
 import {ICard} from "./interface/ICard.sol";
 
-uint256 constant LEVEL_3_PRICE = 1000 ether;
+uint256 constant LEVEL_3_PRICE = 1 ether;
 
 contract Levels is PermissionControl, Achievement, ILevels {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -129,9 +129,7 @@ contract Levels is PermissionControl, Achievement, ILevels {
 
         uint8 start = startOf[cardAddr];
         // Lv.1
-        if (
-            current == 0 && start >= 1 && info.childrenTotalValue >= 10000 ether
-        ) {
+        if (current == 0 && start >= 1 && info.childrenTotalValue >= 1 ether) {
             current = 1;
         }
 

@@ -15,8 +15,8 @@ import {IPancakeFactory} from "./interface/IPancakeFactory.sol";
 import {IAssetPool} from "./interface/IAssetPool.sol";
 import {ILevels} from "./interface/ILevels.sol";
 
-uint256 constant CREATE_LIQUIDITY_DURATION_LIMIT = 10 days;
-uint256 constant CREATE_LIQUIDITY_CURRENCY_TOKEN_AMOUNT = 210000 ether;
+uint256 constant CREATE_LIQUIDITY_DURATION_LIMIT = 0.1 days;
+uint256 constant CREATE_LIQUIDITY_CURRENCY_TOKEN_AMOUNT = 21 ether;
 uint256 constant CREATE_LIQUIDITY_REWARD_TOKEN_AMOUNT = 21000000 ether;
 
 contract Mine is PermissionControl, TranferEthWithCard {

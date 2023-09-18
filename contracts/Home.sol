@@ -113,6 +113,13 @@ contract Home is
         unownedAssetTokenId = 10000;
     }
 
+    function setUnownedAssetTokenId(
+        uint256 tokenId
+    ) external onlyRole(MANAGER_ROLE) {
+        require(ICard(card).ownerOf(tokenId) != address(0), "error tokenId");
+        unownedAssetTokenId = tokenId;
+    }
+
     function setWithdrawFeeReceiptor(
         address receiptor
     ) external onlyRole(MANAGER_ROLE) {
@@ -162,15 +169,15 @@ contract Home is
         address cardAddr
     ) public view returns (uint8, uint256, uint256) {
         uint8 originStart = levels.startOf(cardAddr);
-        uint256 minValue = 100 ether * 2 ** originStart;
+        uint256 minValue = 0.1 ether * 2 ** originStart;
         uint256 maxValue;
         if (originStart + 1 >= 5) {
             maxValue = type(uint256).max;
         } else {
-            maxValue = 1000 ether;
+            maxValue = 1 ether;
         }
         if (originStart + 1 > 6) {
-            minValue = 1000 ether;
+            minValue = 1 ether;
         }
         return (originStart, minValue, maxValue);
     }
@@ -368,16 +375,17 @@ contract Home is
         emit TakedReward(cardAddr, reward, block.timestamp);
     }
 
-    function takeUnownedAssetBalance() external {
+    function takeUnownedAssetBalance(uint256 amount) external {
         require(unownedAssetAmount > 0, "zero");
+        require(amount <= unownedAssetAmount, "too big");
         require(
             ICard(card).ownerOf(unownedAssetTokenId) == msg.sender,
             "invalid msg"
         );
-        IWrappedCoin(address(depositToken)).withdraw(unownedAssetAmount);
+        IWrappedCoin(address(depositToken)).withdraw(amount);
 
-        payable(msg.sender).transfer(unownedAssetAmount);
-        unownedAssetAmount = 0;
+        payable(msg.sender).transfer(amount);
+        unownedAssetAmount -= amount;
     }
 
     receive() external payable {}
