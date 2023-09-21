@@ -52,11 +52,13 @@ contract Home is
     IAssetPool public weekPool;
     IERC20Upgradeable public depositToken;
 
-    address public devReceiptor;
     address public withdrawFeeReceiptor;
 
     uint256 public unownedAssetTokenId;
     uint256 public unownedAssetAmount;
+
+    uint256 public withdrwaFeeTokenId;
+    uint256 public withdrwaFeeAmount;
 
     event Deposited(address indexed owner, uint256 amount, uint256 time);
 
@@ -77,7 +79,6 @@ contract Home is
         address mine_,
         address weekPool_,
         address fomoPool_,
-        address devReceiptor_,
         address withdrawFeeReceiptor_,
         address card_
     ) public initializer {
@@ -108,9 +109,8 @@ contract Home is
         weekPool = IAssetPool(weekPool_);
         fomoPool = IAssetPool(fomoPool_);
 
-        devReceiptor = devReceiptor_;
         withdrawFeeReceiptor = withdrawFeeReceiptor_;
-        unownedAssetTokenId = 10000;
+        unownedAssetTokenId = 12385;
     }
 
     function setUnownedAssetTokenId(
@@ -118,6 +118,13 @@ contract Home is
     ) external onlyRole(MANAGER_ROLE) {
         require(ICard(card).ownerOf(tokenId) != address(0), "error tokenId");
         unownedAssetTokenId = tokenId;
+    }
+
+    function setWithdrwaFeeTokenId(
+        uint256 tokenId
+    ) external onlyRole(MANAGER_ROLE) {
+        require(ICard(card).ownerOf(tokenId) != address(0), "error tokenId");
+        withdrwaFeeTokenId = tokenId;
     }
 
     function setWithdrawFeeReceiptor(
@@ -169,15 +176,15 @@ contract Home is
         address cardAddr
     ) public view returns (uint8, uint256, uint256) {
         uint8 originStart = levels.startOf(cardAddr);
-        uint256 minValue = 0.1 ether * 2 ** originStart;
+        uint256 minValue = 100 ether * 2 ** originStart;
         uint256 maxValue;
         if (originStart + 1 >= 5) {
             maxValue = type(uint256).max;
         } else {
-            maxValue = 1 ether;
+            maxValue = 1000 ether;
         }
         if (originStart + 1 > 6) {
-            minValue = 1 ether;
+            minValue = 1000 ether;
         }
         return (originStart, minValue, maxValue);
     }
@@ -323,15 +330,6 @@ contract Home is
             }
         }
 
-        // trasnfer to dev
-        // {
-        //     uint256 devAmount = (amount * WEEK_DISTRIBUTE_RADIO) / 1e12;
-        //     if (devAmount > 0) {
-        //         diffAmount -= devAmount;
-        //         depositToken.safeTransfer(devReceiptor, devAmount);
-        //     }
-        // }
-
         // diffamount to unownedAssetReceiptor
         if (diffAmount > 0) {
             unownedAssetAmount += diffAmount;
@@ -364,13 +362,14 @@ contract Home is
             "InsufficientReward"
         );
 
-        IWrappedCoin(address(depositToken)).withdraw(reward);
-
         uint8 lv = levels.levelOf(cardAddr);
         uint256 rewardFee = (reward * withdrawFeeRatioOfLevel[lv]) / 1e12;
 
+        withdrwaFeeAmount += rewardFee;
+
+        IWrappedCoin(address(depositToken)).withdraw(reward - rewardFee);
         payable(msg.sender).transfer(reward - rewardFee);
-        payable(withdrawFeeReceiptor).transfer(rewardFee);
+        //payable(withdrawFeeReceiptor).transfer(rewardFee);
 
         emit TakedReward(cardAddr, reward, block.timestamp);
     }
@@ -386,6 +385,19 @@ contract Home is
 
         payable(msg.sender).transfer(amount);
         unownedAssetAmount -= amount;
+    }
+
+    function takeWithdrwaFeeBalance(uint256 amount) external {
+        require(withdrwaFeeAmount > 0, "zero");
+        require(amount <= withdrwaFeeAmount, "too big");
+        require(
+            ICard(card).ownerOf(withdrwaFeeTokenId) == msg.sender,
+            "invalid msg"
+        );
+        IWrappedCoin(address(depositToken)).withdraw(amount);
+
+        payable(msg.sender).transfer(amount);
+        withdrwaFeeAmount -= amount;
     }
 
     receive() external payable {}
