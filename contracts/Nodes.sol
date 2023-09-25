@@ -49,6 +49,10 @@ contract Nodes is PermissionControl, INodes, TranferEthWithCard {
     }
 
     function takeReward(address cardAddr) external {
+        require(
+            ICard(card).ownerOfAddr(cardAddr) == msg.sender,
+            "invalid cardAddr"
+        );
         MinerInfo storage info = minerInfoOf[cardAddr];
         uint256 reward = earned(cardAddr);
         if (reward > 0) {

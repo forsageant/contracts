@@ -31,7 +31,7 @@ contract CardNFT is
     ) external initializer {
         __PermissionControl_init();
         __ERC721_init(name_, symbol_);
-        currentTokenId = 10000;
+        currentTokenId = 12385;
         random = _random;
     }
 

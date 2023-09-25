@@ -127,12 +127,12 @@ contract Home is
         withdrwaFeeTokenId = tokenId;
     }
 
-    function setWithdrawFeeReceiptor(
-        address receiptor
-    ) external onlyRole(MANAGER_ROLE) {
-        require(receiptor != address(0), "ReceiptorIsNullAddress");
-        withdrawFeeReceiptor = receiptor;
-    }
+    // function setWithdrawFeeReceiptor(
+    //     address receiptor
+    // ) external onlyRole(MANAGER_ROLE) {
+    //     require(receiptor != address(0), "ReceiptorIsNullAddress");
+    //     withdrawFeeReceiptor = receiptor;
+    // }
 
     function setWithdrawFeeRatioAtLevel(
         uint8 lv,

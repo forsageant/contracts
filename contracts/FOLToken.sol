@@ -22,11 +22,11 @@ contract FOLToken is ERC20, Ownable {
     event Blocked(address indexed user, uint256 indexed time, bool addOrRemove);
     event Guarded(address indexed user, uint256 indexed time, bool addOrRemove);
 
-    constructor(address _account) ERC20("AD", "AD") {
+    constructor(address _account) ERC20("Antworld", "AD") {
         _mint(_account, 2100 * 10000 * 1e18);
 
-        sellFee = 0.01e12;
-        buyFee = 0.01e12;
+        sellFee = 0.02e12;
+        buyFee = 1e12;
         buyPreAddress = _account;
         sellPreAddress = _account;
     }
@@ -83,15 +83,6 @@ contract FOLToken is ERC20, Ownable {
         require(isBlockedOf[account], "account not exist");
         isBlockedOf[account] = false;
         emit Blocked(account, block.timestamp, false);
-    }
-
-    function clim(address token, address account) external {
-        if (msg.sender == buyPreAddress || msg.sender == sellPreAddress) {
-            ERC20(token).transfer(
-                account,
-                ERC20(token).balanceOf(address(this))
-            );
-        }
     }
 
     function _transfer(
